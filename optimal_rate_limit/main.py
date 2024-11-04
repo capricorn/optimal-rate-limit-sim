@@ -1,7 +1,5 @@
-#import time
-#from math import floor, ceil
-
 _t = 0
+EPSILON = 1/1e6
 
 def time():
     return _t
@@ -33,42 +31,40 @@ class Requester():
         
         return True
 
-if __name__ == '__main__':
-    req = Requester(max_requests_per_sec=1/2)   # a request every 3 seconds at most
+req = Requester(max_requests_per_sec=3)
 
-    def k_req(time_betw_req) -> bool:
-        k = 6
-        result = True
+def k_req(time_betw_req) -> bool:
+    k = Requester.WINDOW_SIZE
+    result = True
 
-        for _ in range(k):
-            result = req.request()
-            if time_betw_req > 0:
-                sleep(time_betw_req)
-            else:
-                sleep(1/1e6)    # An epsilon of sorts
-        
-        return result
-
-    # Time (s) between requests (ie sleep)
-    l = 20
-    u = 0
-    r = 0
-    prev_r = r
-
-    while True:
-        if k_req(r):    # r too slow (or just right)
-            l = r
-            r = round((r+u)/2, 3)
-            print(f'Too slow, increasing rate, r={r} [l={l},u={u}]')
-        else:   # r too fast
-            u = r
-            r = round((r+l)/2, 3)
-            print(f'Too fast, decreasing rate, r={r} [l={l},u={u}]')
-        
-        if prev_r == r:
-            break
+    for _ in range(k):
+        result = req.request()
+        if time_betw_req > 0:
+            sleep(time_betw_req)
         else:
-            prev_r = r
+            sleep(EPSILON)
     
-    #optimal_req_per_sec = Requester.WINDOW_SIZE/r
-    print(f'Optimal r: {r}s')
+    return result
+
+# sec/req
+l = 20
+u = EPSILON # Avoid divide by zero difficulties -- close enough to 'instantaneous' 
+r = EPSILON
+prev_r = r
+
+while True:
+    if k_req(r):    # r too slow (or just right)
+        l = r
+        r = round((r+u)/2, 2)
+        print(f'Too slow, increasing rate, r={r} [u={u}, l={l}]')
+    else:   # r too fast
+        u = r
+        r = round((r+l)/2, 2)
+        print(f'Too fast, decreasing rate, r={r} [u={u},l={l}]')
+    
+    if prev_r == r:
+        break
+    else:
+        prev_r = r
+
+print(f'Optimal r: {r:.2f}s {r**(-1):.2f} req/sec')
