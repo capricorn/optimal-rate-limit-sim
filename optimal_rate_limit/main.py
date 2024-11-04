@@ -1,5 +1,14 @@
-import time
-from math import floor, ceil
+#import time
+#from math import floor, ceil
+
+_t = 0
+
+def time():
+    return _t
+
+def sleep(sec):
+    global _t
+    _t += sec
 
 class Requester():
     WINDOW_SIZE = 5
@@ -12,14 +21,12 @@ class Requester():
         self.request_ts_window = []
 
     def request(self) -> bool:
-        self.request_ts_window.append(time.time())
+        self.request_ts_window.append(time())
         if len(self.request_ts_window) < Requester.WINDOW_SIZE:
             return True
         
         req_per_sec = Requester.WINDOW_SIZE/(self.request_ts_window[-1] - self.request_ts_window[0])
-        #self.request_ts_window = self.request_ts_window[1:]
         self.request_ts_window.pop(0)
-        print(req_per_sec)
 
         if req_per_sec > self.max_requests_per_sec:
             return False
@@ -29,59 +36,39 @@ class Requester():
 if __name__ == '__main__':
     req = Requester(max_requests_per_sec=1/3)   # a request every 3 seconds at most
 
-    def k_req(sleep) -> bool:
+    def k_req(time_betw_req) -> bool:
         k = 5
-        for _ in range(k):
-            if not req.request():
-                req.reset()
-                return False
-            time.sleep(sleep)
-        
-        req.reset()
-        return True
+        result = True
 
-    l = 0
-    u = 10
-    r = 0   # Debate: this vs (l+u)/2 (Somewhat makes sense to try the fastest rate)
+        for _ in range(k):
+            result = req.request()
+            if time_betw_req > 0:
+                sleep(time_betw_req)
+            else:
+                sleep(1/1e6)    # An epsilon of sorts
+        
+        return result
+
+    # Time (s) between requests (ie sleep)
+    l = 20
+    u = 0
+    r = 0
     prev_r = r
 
-    # TODO: Implement a random components to the rate limit
-    # Ex: it may be dynamic depending on traffic at that time of day; show that this is adaptive to that 
-
-    # TODO: Expected number of steps..?
-    # TODO: Is tightening the bounds via midpoint the best approach..?
-    # I think the problem is r beginning at 0?
-
-    # TODO: Can the bounds be updated to improve the search?
     while True:
         if k_req(r):    # r too slow (or just right)
-            u = r
-            r = round((r+l)/2, 2)
-            #u = round((r+u)/2, 4)
-            print(f'Speeding up; new r: {r} [{l},{u}]')
-        else:   # r too fast
             l = r
             r = round((r+u)/2, 2)
-            #l = round((r+l)/2, 4)
-            print(f'Slowing (and cooling) down; new r: {r} [{l},{u}]')
-            # imitates a cooldown
-            req.reset()
+            print(f'Too slow, increasing rate, r={r} [l={l},u={u}]')
+        else:   # r too fast
+            u = r
+            r = round((r+l)/2, 2)
+            print(f'Too fast, decreasing rate, r={r} [l={l},u={u}]')
         
         if prev_r == r:
             break
         else:
             prev_r = r
     
-    # TODO: Is it possible to _always_ satisfy the limiter?
-    # (Clearly the last r _should_ satisfy the limiter.)
-    # TODO: The precision shouldn't really matter wrt termination.
-    optimal_req_per_sec = Requester.WINDOW_SIZE/r
+    #optimal_req_per_sec = Requester.WINDOW_SIZE/r
     print(f'Optimal r: {r}s')
-
-    '''
-    while req.request():
-        print('Successful request')
-        time.sleep(4)
-
-    print('Request failed.')
-    '''
