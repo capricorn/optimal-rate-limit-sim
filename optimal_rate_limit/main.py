@@ -25,7 +25,7 @@ class Requester():
         if len(self.request_ts_window) < Requester.WINDOW_SIZE:
             return True
         
-        req_per_sec = Requester.WINDOW_SIZE/(self.request_ts_window[-1] - self.request_ts_window[0])
+        req_per_sec = (Requester.WINDOW_SIZE-1)/(self.request_ts_window[-1] - self.request_ts_window[0])
         self.request_ts_window.pop(0)
 
         if req_per_sec > self.max_requests_per_sec:
@@ -34,10 +34,10 @@ class Requester():
         return True
 
 if __name__ == '__main__':
-    req = Requester(max_requests_per_sec=1/3)   # a request every 3 seconds at most
+    req = Requester(max_requests_per_sec=1/2)   # a request every 3 seconds at most
 
     def k_req(time_betw_req) -> bool:
-        k = 5
+        k = 6
         result = True
 
         for _ in range(k):
@@ -58,11 +58,11 @@ if __name__ == '__main__':
     while True:
         if k_req(r):    # r too slow (or just right)
             l = r
-            r = round((r+u)/2, 2)
+            r = round((r+u)/2, 3)
             print(f'Too slow, increasing rate, r={r} [l={l},u={u}]')
         else:   # r too fast
             u = r
-            r = round((r+l)/2, 2)
+            r = round((r+l)/2, 3)
             print(f'Too fast, decreasing rate, r={r} [l={l},u={u}]')
         
         if prev_r == r:
